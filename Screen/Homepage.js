@@ -1,34 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Button, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Button } from 'react-native';
+import { db, ref, onValue } from '../firebase'; // make sure the path is correct
 
 export default function DashboardScreen({ navigation }) {
   const [sensorData, setSensorData] = useState({
-    temperature: 26.5,  // Placeholder
-    tds: 320,           // Placeholder
-    waterLevel: 'High', // Placeholder
+    temperature: 'Loading...',
+    tds: 'Loading...',
+    waterLevel: 'Loading...',
   });
 
-  // Function to generate random data
-  const generateSensorData = () => {
-    const temperature = (25 + Math.random() * 5).toFixed(1);  // Random temperature between 25-30°C
-    const tds = Math.floor(300 + Math.random() * 100);  // Random TDS between 300-400 ppm
-    const waterLevel = Math.random() > 0.5 ? 'High' : 'Low'; // Random water level
-
-    setSensorData({
-      temperature,
-      tds,
-      waterLevel,
-    });
-  };
-
-  // Update data every 5 seconds (simulate real-time sensor readings)
   useEffect(() => {
-    const interval = setInterval(() => {
-      generateSensorData();
-    }, 5000);  // Every 5 seconds
+    const tempRef = ref(db, 'temperature');
+    const tdsRef = ref(db, 'tds');
+    const levelRef = ref(db, 'waterLevel');
 
-    // Clean up the interval on component unmount
-    return () => clearInterval(interval);
+    const unsubscribeTemp = onValue(tempRef, snapshot => {
+      setSensorData(prev => ({ ...prev, temperature: snapshot.val() }));
+    });
+
+    const unsubscribeTDS = onValue(tdsRef, snapshot => {
+      setSensorData(prev => ({ ...prev, tds: snapshot.val() }));
+    });
+
+    const unsubscribeLevel = onValue(levelRef, snapshot => {
+      setSensorData(prev => ({ ...prev, waterLevel: snapshot.val() }));
+    });
+
+    return () => {
+      unsubscribeTemp();
+      unsubscribeTDS();
+      unsubscribeLevel();
+    };
   }, []);
 
   return (
