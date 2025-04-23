@@ -1,42 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, TextInput, Button } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
-import { db, ref, onValue } from '../firebase'; // Ensure the correct path for firebase
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { db, ref, onValue } from '../firebase';
 
 export default function ManageDataScreen() {
   const [records, setRecords] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editedRecord, setEditedRecord] = useState({
-    temperature: '',
+    temp: '',
     tds: '',
-    waterLevel: '',
+    turbidity: '',
   });
 
-  // Fetch live data every 2 seconds and add it to records
   useEffect(() => {
     const interval = setInterval(() => {
-      const sensorRef = ref(db, '/');
+      const sensorRef = ref(db, 'water');
       onValue(sensorRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
           const newRecord = {
-            id: `${Date.now()}-${Math.random()}`,  // Create a unique ID with timestamp + random number
-            temperature: data.temperature || 'N/A',
+            id: `${Date.now()}-${Math.random()}`,
+            temp: data.temp || 'N/A',
             tds: data.tds || 'N/A',
-            waterLevel: data.waterLevel || 'N/A',
+            turbidity: data.turbidity || 'N/A',
           };
 
-          // Add the new record to the list and save it to AsyncStorage
           setRecords((prevRecords) => {
             const updatedRecords = [...prevRecords, newRecord];
-            saveRecordsToStorage(updatedRecords);  // Save updated records to AsyncStorage
+            saveRecordsToStorage(updatedRecords);
             return updatedRecords;
           });
         }
       });
     }, 2000);
 
-    // Fetch records from AsyncStorage when the screen is loaded
     const fetchRecordsFromStorage = async () => {
       try {
         const savedRecords = await AsyncStorage.getItem('records');
@@ -50,10 +47,9 @@ export default function ManageDataScreen() {
 
     fetchRecordsFromStorage();
 
-    return () => clearInterval(interval); // Cleanup
+    return () => clearInterval(interval);
   }, []);
 
-  // Function to save records to AsyncStorage
   const saveRecordsToStorage = async (records) => {
     try {
       await AsyncStorage.setItem('records', JSON.stringify(records));
@@ -62,55 +58,44 @@ export default function ManageDataScreen() {
     }
   };
 
-  // Function to handle deleting a record by id
   const handleDelete = (id) => {
-    const updated = records.filter((record) => record.id !== id);  // Use the id to filter out the deleted record
+    const updated = records.filter((record) => record.id !== id);
     setRecords(updated);
-    saveRecordsToStorage(updated);  // Save updated list after deletion
+    saveRecordsToStorage(updated);
   };
 
-  // Function to handle deleting all records
   const handleDeleteAll = async () => {
     Alert.alert(
       'Delete All Data',
       'Are you sure you want to delete all records?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Yes, Delete All',
           onPress: async () => {
-            setRecords([]); // Clear the records state
-            await AsyncStorage.removeItem('records'); // Clear AsyncStorage
-            console.log('All records deleted!');
+            setRecords([]);
+            await AsyncStorage.removeItem('records');
           },
         },
       ]
     );
   };
 
-  // Function to handle editing a record
   const handleEdit = (id) => {
     const recordToEdit = records.find((record) => record.id === id);
     setEditedRecord(recordToEdit);
     setEditingIndex(id);
   };
 
-  // Function to handle saving edited record
   const handleSaveEdit = () => {
     if (editingIndex !== null) {
       const updatedRecords = records.map((record) =>
         record.id === editingIndex ? { ...record, ...editedRecord } : record
       );
       setRecords(updatedRecords);
-
-      // Save updated records to AsyncStorage
       saveRecordsToStorage(updatedRecords);
-
       setEditingIndex(null);
-      setEditedRecord({ temperature: '', tds: '', waterLevel: '' });
+      setEditedRecord({ temp: '', tds: '', turbidity: '' });
     }
   };
 
@@ -119,12 +104,12 @@ export default function ManageDataScreen() {
       <Text style={styles.title}>Sensor Data History (Realtime)</Text>
       <FlatList
         data={records}
-        keyExtractor={(item) => item.id}  // Use unique id generated from timestamp + random number
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.record}>
-            <Text style={styles.recordText}>Temp: {item.temperature}°C</Text>
+            <Text style={styles.recordText}>Temp: {item.temp}°C</Text>
             <Text style={styles.recordText}>TDS: {item.tds} ppm</Text>
-            <Text style={styles.recordText}>Level: {item.waterLevel}</Text>
+            <Text style={styles.recordText}>Turbidity: {item.turbidity}</Text>
             <View style={styles.actions}>
               <TouchableOpacity onPress={() => handleEdit(item.id)} style={styles.editBtn}>
                 <Text style={styles.actionText}>Edit</Text>
@@ -144,8 +129,8 @@ export default function ManageDataScreen() {
           <TextInput
             style={styles.input}
             placeholder="Temperature"
-            value={editedRecord.temperature}
-            onChangeText={(text) => setEditedRecord({ ...editedRecord, temperature: text })}
+            value={editedRecord.temp}
+            onChangeText={(text) => setEditedRecord({ ...editedRecord, temp: text })}
           />
           <TextInput
             style={styles.input}
@@ -155,16 +140,15 @@ export default function ManageDataScreen() {
           />
           <TextInput
             style={styles.input}
-            placeholder="Water Level"
-            value={editedRecord.waterLevel}
-            onChangeText={(text) => setEditedRecord({ ...editedRecord, waterLevel: text })}
+            placeholder="Turbidity"
+            value={editedRecord.turbidity}
+            onChangeText={(text) => setEditedRecord({ ...editedRecord, turbidity: text })}
           />
           <Button title="Save Changes" onPress={handleSaveEdit} />
           <Button title="Cancel" onPress={() => setEditingIndex(null)} color="red" />
         </View>
       )}
 
-      {/* Button to Delete All Data */}
       <TouchableOpacity onPress={handleDeleteAll} style={styles.deleteAllBtn}>
         <Text style={styles.actionText}>Delete All Data</Text>
       </TouchableOpacity>
